@@ -20,7 +20,8 @@ import {
   Send,
   TrendingUp,
   GraduationCap,
-  Sparkles
+  Sparkles,
+  ArrowRightLeft
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -85,9 +86,8 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-border">
         <Link href="/" className="flex items-center gap-2">
-          <Zap className="text-primary" size={24} />
-          <span className="font-semibold text-lg text-gray-dark">LeadFlow</span>
-          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">LATAM</span>
+          <ArrowRightLeft className="text-primary" size={24} />
+          <span className="font-semibold text-lg text-gray-dark">End2End</span>
         </Link>
       </div>
 

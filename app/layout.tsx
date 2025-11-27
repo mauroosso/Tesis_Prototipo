@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LeadFlow LATAM - Generación de Leads B2B",
+  title: "End2End - Generación de Leads B2B",
   description: "Plataforma de generación y conversión de leads B2B para PyMEs en Latinoamérica",
 };
 

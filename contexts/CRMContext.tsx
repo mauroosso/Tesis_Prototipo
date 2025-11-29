@@ -5,7 +5,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 export type LeadStatus = 'nuevo' | 'warm-up' | 'en-secuencia' | 'respondio' | 'reunion-agendada' | 'cliente';
 
 export interface WarmupAction {
-  type: 'visitar-perfil' | 'like' | 'comentar' | 'seguir' | 'interactuar-seguidores';
+  type: 'visitar-perfil' | 'dar-like' | 'comentar' | 'seguir' | 'ver-posts' | 'interactuar-seguidores' | 'revisar-empresa' | 'guardar-posts';
   personId: string;
   timestamp: Date;
   notes?: string;

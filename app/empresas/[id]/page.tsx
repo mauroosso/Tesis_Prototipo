@@ -15,7 +15,7 @@ import {
 export default function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const company = companies.find(c => c.id === resolvedParams.id);
-  const { addToList, createList, getListsByType } = useLists();
+  const { addToList, createList, createListWithItems, getListsByType } = useLists();
 
   const [showEmployees, setShowEmployees] = useState(true);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
@@ -66,16 +66,10 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
 
   const handleCreateAndAddToList = () => {
     if (newListName.trim()) {
-      createList(newListName, 'people');
-      setTimeout(() => {
-        const newList = peopleLists.find(l => l.name === newListName);
-        if (newList) {
-          addToList(newList.id, selectedEmployees);
-        }
-        setShowAddToListModal(false);
-        setSelectedEmployees([]);
-        setNewListName('');
-      }, 100);
+      createListWithItems(newListName, 'people', selectedEmployees);
+      setShowAddToListModal(false);
+      setSelectedEmployees([]);
+      setNewListName('');
     }
   };
 

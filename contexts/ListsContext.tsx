@@ -14,7 +14,8 @@ interface List {
 
 interface ListsContextType {
   lists: List[];
-  createList: (name: string, type: 'companies' | 'people') => void;
+  createList: (name: string, type: 'companies' | 'people') => string; // Returns the new list ID
+  createListWithItems: (name: string, type: 'companies' | 'people', itemIds: string[]) => void;
   addToList: (listId: string, itemIds: string[]) => void;
   removeFromList: (listId: string, itemIds: string[]) => void;
   getListsByType: (type: 'companies' | 'people') => List[];
@@ -40,12 +41,24 @@ export function ListsProvider({ children }: { children: ReactNode }) {
     },
   ]);
 
-  const createList = (name: string, type: 'companies' | 'people') => {
+  const createList = (name: string, type: 'companies' | 'people'): string => {
     const newList: List = {
-      id: `list-${Date.now()}`,
+      id: `list-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name,
       type,
       items: [],
+      createdAt: new Date(),
+    };
+    setLists(prev => [...prev, newList]);
+    return newList.id;
+  };
+
+  const createListWithItems = (name: string, type: 'companies' | 'people', itemIds: string[]) => {
+    const newList: List = {
+      id: `list-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name,
+      type,
+      items: itemIds,
       createdAt: new Date(),
     };
     setLists(prev => [...prev, newList]);
@@ -77,7 +90,7 @@ export function ListsProvider({ children }: { children: ReactNode }) {
 
   return (
     <ListsContext.Provider
-      value={{ lists, createList, addToList, removeFromList, getListsByType }}
+      value={{ lists, createList, createListWithItems, addToList, removeFromList, getListsByType }}
     >
       {children}
     </ListsContext.Provider>

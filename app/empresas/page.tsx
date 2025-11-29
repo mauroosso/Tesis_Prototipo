@@ -15,7 +15,7 @@ type ViewMode = 'list' | 'grid';
 type ActiveTab = 'searched' | 'saved';
 
 export default function EmpresasPage() {
-  const { lists, addToList, createList, getListsByType } = useLists();
+  const { lists, addToList, createList, createListWithItems, getListsByType } = useLists();
   const companyLists = getListsByType('companies');
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -125,17 +125,10 @@ export default function EmpresasPage() {
 
   const handleCreateAndAddToList = () => {
     if (newListName.trim()) {
-      createList(newListName, 'companies');
-      // Find the newly created list and add companies
-      setTimeout(() => {
-        const newList = companyLists.find(l => l.name === newListName);
-        if (newList) {
-          addToList(newList.id, selectedCompanies);
-        }
-        setShowAddToListModal(false);
-        setSelectedCompanies([]);
-        setNewListName('');
-      }, 100);
+      createListWithItems(newListName, 'companies', selectedCompanies);
+      setShowAddToListModal(false);
+      setSelectedCompanies([]);
+      setNewListName('');
     }
   };
 

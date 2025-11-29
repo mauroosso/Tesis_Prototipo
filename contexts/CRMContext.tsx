@@ -86,8 +86,137 @@ interface CRMContextType {
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
 export function CRMProvider({ children }: { children: ReactNode }) {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([
+    // Demo leads
+    {
+      id: 'lead-demo-1',
+      personId: 'p001',
+      status: 'respondio',
+      lastContact: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      nextAction: 'Seguir conversación',
+      warmupActions: [],
+      notes: ['Lead interesado en el producto'],
+      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    },
+    {
+      id: 'lead-demo-2',
+      personId: 'p002',
+      status: 'respondio',
+      lastContact: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      nextAction: 'Enviar link de reunión',
+      warmupActions: [],
+      notes: ['Quiere agendar llamada'],
+      createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+    },
+    {
+      id: 'lead-demo-3',
+      personId: 'p003',
+      status: 'en-secuencia',
+      lastContact: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      nextAction: 'Siguiente paso en 2 días',
+      warmupActions: [],
+      notes: [],
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    },
+    {
+      id: 'lead-demo-4',
+      personId: 'p004',
+      status: 'warm-up',
+      lastContact: new Date(Date.now() - 12 * 60 * 60 * 1000),
+      nextAction: 'Dar like en próximos posts',
+      warmupActions: [
+        {
+          type: 'visitar-perfil',
+          personId: 'p004',
+          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          notes: 'Visitado perfil',
+        },
+        {
+          type: 'dar-like',
+          personId: 'p004',
+          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+          notes: 'Like en último post',
+        },
+      ],
+      notes: ['Perfil muy activo en LinkedIn'],
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+    },
+    {
+      id: 'lead-demo-5',
+      personId: 'p005',
+      status: 'nuevo',
+      lastContact: null,
+      nextAction: 'Iniciar warm-up',
+      warmupActions: [],
+      notes: [],
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    },
+    {
+      id: 'lead-demo-6',
+      personId: 'p006',
+      status: 'reunion-agendada',
+      lastContact: new Date(Date.now() - 6 * 60 * 60 * 1000),
+      nextAction: 'Preparar demo',
+      warmupActions: [],
+      notes: ['Reunión agendada para mañana', 'Muy interesado en automatización'],
+      createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+    },
+    {
+      id: 'lead-demo-7',
+      personId: 'p007',
+      status: 'cliente',
+      lastContact: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      nextAction: 'Onboarding call',
+      warmupActions: [],
+      notes: ['Cliente nuevo!', 'Cerrado plan Enterprise'],
+      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    },
+    {
+      id: 'lead-demo-8',
+      personId: 'p008',
+      status: 'en-secuencia',
+      lastContact: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      nextAction: 'Follow-up email en día 7',
+      warmupActions: [],
+      notes: [],
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    },
+  ]);
+  const [meetings, setMeetings] = useState<Meeting[]>([
+    // Demo meetings
+    {
+      id: 'meeting-demo-1',
+      leadId: 'lead-demo-6',
+      personId: 'p006',
+      title: 'Demo de End2End',
+      date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+      time: '15:00',
+      meetLink: 'https://meet.google.com/abc-defg-hij',
+      notes: 'Mostrar automatización de secuencias',
+      status: 'scheduled',
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+    },
+    {
+      id: 'meeting-demo-2',
+      leadId: 'lead-demo-7',
+      personId: 'p007',
+      title: 'Onboarding Call',
+      date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      time: '10:00',
+      meetLink: 'https://meet.google.com/xyz-abcd-efg',
+      notes: 'Configuración inicial de cuenta',
+      status: 'scheduled',
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    },
+  ]);
   const [conversations, setConversations] = useState<Conversation[]>([
     // Demo conversations
     {

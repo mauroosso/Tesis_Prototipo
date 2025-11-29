@@ -1,58 +1,78 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { people } from '@/data/people';
-import { MoreVertical, Mail, Linkedin, Phone, Calendar } from 'lucide-react';
+import { useCRM, type LeadStatus } from '@/contexts/CRMContext';
+import Link from 'next/link';
+import {
+  MoreVertical, Mail, Linkedin, Phone, Calendar,
+  MessageSquare, Sparkles, Eye, Video, CheckCircle
+} from 'lucide-react';
 
-type Stage = 'nuevo' | 'contactado' | 'interesado' | 'reunión' | 'cliente';
-
-interface Lead {
-  id: string;
+interface StageConfig {
+  id: LeadStatus;
   name: string;
-  company: string;
-  avatar: string;
-  lastContact: string;
-  nextAction: string;
-  urgency: 'high' | 'medium' | 'low';
-  stage: Stage;
+  color: string;
+  icon: React.ReactNode;
 }
 
-const stages: { id: Stage; name: string; color: string }[] = [
-  { id: 'nuevo', name: 'Nuevo', color: 'bg-gray-100' },
-  { id: 'contactado', name: 'Contactado', color: 'bg-blue-100' },
-  { id: 'interesado', name: 'Interesado', color: 'bg-purple-100' },
-  { id: 'reunión', name: 'Reunión', color: 'bg-orange-100' },
-  { id: 'cliente', name: 'Cliente', color: 'bg-green-100' },
+const stages: StageConfig[] = [
+  {
+    id: 'nuevo',
+    name: 'Nuevo',
+    color: 'bg-gray-100',
+    icon: <Eye size={16} className="text-gray-600" />,
+  },
+  {
+    id: 'warm-up',
+    name: 'Warm-up',
+    color: 'bg-blue-100',
+    icon: <Sparkles size={16} className="text-blue-600" />,
+  },
+  {
+    id: 'en-secuencia',
+    name: 'En Secuencia',
+    color: 'bg-purple-100',
+    icon: <Mail size={16} className="text-purple-600" />,
+  },
+  {
+    id: 'respondio',
+    name: 'Respondió',
+    color: 'bg-orange-100',
+    icon: <MessageSquare size={16} className="text-orange-600" />,
+  },
+  {
+    id: 'reunion-agendada',
+    name: 'Reunión Agendada',
+    color: 'bg-yellow-100',
+    icon: <Video size={16} className="text-yellow-600" />,
+  },
+  {
+    id: 'cliente',
+    name: 'Cliente',
+    color: 'bg-green-100',
+    icon: <CheckCircle size={16} className="text-green-600" />,
+  },
 ];
 
 export default function CRMPage() {
-  // Convert people data to leads format
-  const initialLeads: Lead[] = people.slice(0, 20).map(person => ({
-    id: person.id,
-    name: person.fullName,
-    company: person.company,
-    avatar: person.avatar,
-    lastContact: person.lastContact || 'Sin contacto',
-    nextAction: person.nextAction,
-    urgency: person.roleChangedRecently ? 'high' : Math.random() > 0.5 ? 'medium' : 'low',
-    stage: person.status as Stage,
-  }));
-
-  const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const { leads, updateLeadStatus, meetings } = useCRM();
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
 
-  const getLeadsByStage = (stage: Stage) => {
-    return leads.filter(lead => lead.stage === stage);
-  };
+  // Enrich leads with person data
+  const enrichedLeads = useMemo(() => {
+    return leads.map(lead => {
+      const person = people.find(p => p.id === lead.personId);
+      return {
+        ...lead,
+        person,
+      };
+    });
+  }, [leads]);
 
-  const getUrgencyBadge = (urgency: 'high' | 'medium' | 'low') => {
-    const styles = {
-      high: 'bg-red-500',
-      medium: 'bg-yellow-500',
-      low: 'bg-green-500',
-    };
-    return styles[urgency];
+  const getLeadsByStage = (stage: LeadStatus) => {
+    return enrichedLeads.filter(lead => lead.status === stage);
   };
 
   const handleDragStart = (leadId: string) => {
@@ -63,133 +83,242 @@ export default function CRMPage() {
     e.preventDefault();
   };
 
-  const handleDrop = (stage: Stage) => {
+  const handleDrop = (stage: LeadStatus) => {
     if (!draggedLead) return;
-
-    setLeads(prevLeads =>
-      prevLeads.map(lead =>
-        lead.id === draggedLead ? { ...lead, stage } : lead
-      )
-    );
+    updateLeadStatus(draggedLead, stage);
     setDraggedLead(null);
+  };
+
+  const getMeetingForLead = (leadId: string) => {
+    return meetings.find(m => m.leadId === leadId && m.status === 'scheduled');
   };
 
   return (
     <AppLayout>
-      <div className="h-full flex flex-col bg-gray-light">
+      <div className="h-full flex flex-col bg-[#fafafa]">
         {/* Header */}
-        <div className="bg-white border-b border-gray-border px-8 py-6">
-          <h1 className="text-2xl font-light text-gray-dark mb-1">CRM Visual</h1>
-          <p className="text-sm text-gray-text">
-            Gestiona tus oportunidades de venta de forma visual
-          </p>
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-normal text-gray-900 mb-1">CRM Visual</h1>
+              <p className="text-sm text-gray-500">
+                Gestiona tus oportunidades de venta de forma visual
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/listas"
+                className="flex items-center gap-2 border border-gray-300 bg-white hover:bg-gray-50 px-4 py-2 rounded-lg text-sm text-gray-700 transition-colors"
+              >
+                Ver listas
+              </Link>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-200">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">{leads.length}</div>
+              <div className="text-xs text-gray-500">Total Leads</div>
+            </div>
+            <div>
+              <div className="text-2xl font-semibold text-primary">
+                {getLeadsByStage('en-secuencia').length}
+              </div>
+              <div className="text-xs text-gray-500">En Secuencia</div>
+            </div>
+            <div>
+              <div className="text-2xl font-semibold text-success">
+                {getLeadsByStage('cliente').length}
+              </div>
+              <div className="text-xs text-gray-500">Clientes</div>
+            </div>
+          </div>
         </div>
 
         {/* Kanban Board */}
         <div className="flex-1 overflow-x-auto p-6">
-          <div className="flex gap-4 h-full min-w-max">
-            {stages.map(stage => (
-              <div
-                key={stage.id}
-                className="flex flex-col w-80 bg-white rounded-lg border border-gray-border"
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop(stage.id)}
+          {leads.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="bg-gray-100 rounded-full p-6 mb-4">
+                <Sparkles size={48} className="text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No hay leads en el CRM
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Comienza haciendo warm-up a personas de tus listas para crear leads automáticamente
+              </p>
+              <Link
+                href="/listas"
+                className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors"
               >
-                {/* Column Header */}
-                <div className={`px-4 py-3 border-b border-gray-border ${stage.color}`}>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-dark">
-                      {stage.name}
-                    </h3>
-                    <span className="text-xs font-medium text-gray-600 bg-white px-2 py-0.5 rounded-full">
-                      {getLeadsByStage(stage.id).length}
-                    </span>
+                Ir a Listas
+              </Link>
+            </div>
+          ) : (
+            <div className="flex gap-4 h-full min-w-max">
+              {stages.map(stage => (
+                <div
+                  key={stage.id}
+                  className="flex flex-col w-80 bg-white rounded-lg border border-gray-200"
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(stage.id)}
+                >
+                  {/* Column Header */}
+                  <div className={`px-4 py-3 border-b border-gray-200 ${stage.color} rounded-t-lg`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {stage.icon}
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          {stage.name}
+                        </h3>
+                      </div>
+                      <span className="text-xs font-medium text-gray-600 bg-white px-2 py-0.5 rounded-full">
+                        {getLeadsByStage(stage.id).length}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Cards Container */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                  {getLeadsByStage(stage.id).map(lead => (
-                    <div
-                      key={lead.id}
-                      draggable
-                      onDragStart={() => handleDragStart(lead.id)}
-                      className="bg-white border border-gray-border rounded-lg p-4 cursor-move hover:shadow-card-hover transition-shadow group"
-                    >
-                      {/* Card Header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={lead.avatar}
-                            alt={lead.name}
-                            className="w-10 h-10 rounded-full"
-                          />
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-dark">
-                              {lead.name}
-                            </h4>
-                            <p className="text-xs text-gray-text">{lead.company}</p>
+                  {/* Cards Container */}
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {getLeadsByStage(stage.id).map(lead => {
+                      if (!lead.person) return null;
+                      const meeting = getMeetingForLead(lead.id);
+
+                      return (
+                        <div
+                          key={lead.id}
+                          draggable
+                          onDragStart={() => handleDragStart(lead.id)}
+                          className="bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-shadow group"
+                        >
+                          {/* Card Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={lead.person.avatar}
+                                alt={lead.person.fullName}
+                                className="w-10 h-10 rounded-full"
+                              />
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-900">
+                                  {lead.person.fullName}
+                                </h4>
+                                <p className="text-xs text-gray-500">{lead.person.company}</p>
+                              </div>
+                            </div>
+                            <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded">
+                              <MoreVertical size={16} className="text-gray-400" />
+                            </button>
+                          </div>
+
+                          {/* Card Info */}
+                          <div className="space-y-2 mb-3">
+                            <div className="text-xs text-gray-600">
+                              {lead.person.title}
+                            </div>
+
+                            {lead.lastContact && (
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <Calendar size={12} />
+                                <span>
+                                  {new Date(lead.lastContact).toLocaleDateString('es-AR', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                  })}
+                                </span>
+                              </div>
+                            )}
+
+                            {lead.warmupActions.length > 0 && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <Sparkles size={12} className="text-primary" />
+                                <span className="text-gray-600">
+                                  {lead.warmupActions.length} acciones de warm-up
+                                </span>
+                              </div>
+                            )}
+
+                            {meeting && (
+                              <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs">
+                                <div className="flex items-center gap-1 text-yellow-700 font-medium mb-1">
+                                  <Video size={12} />
+                                  <span>Reunión programada</span>
+                                </div>
+                                <div className="text-yellow-600">
+                                  {new Date(meeting.date).toLocaleDateString('es-AR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                  })}
+                                  {' • '}
+                                  {meeting.time}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="text-xs">
+                              <span className="text-gray-500">Próxima acción: </span>
+                              <span className="text-gray-900 font-medium">{lead.nextAction}</span>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 pt-2 border-t border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <a
+                              href={`https://${lead.person.linkedIn}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 hover:bg-blue-50 rounded text-gray-400 hover:text-blue-600 transition-colors"
+                              title="LinkedIn"
+                            >
+                              <Linkedin size={14} />
+                            </a>
+                            <a
+                              href={`mailto:${lead.person.email}`}
+                              className="p-1.5 hover:bg-purple-50 rounded text-gray-400 hover:text-purple-600 transition-colors"
+                              title="Email"
+                            >
+                              <Mail size={14} />
+                            </a>
+                            {lead.person.phone && (
+                              <a
+                                href={`tel:${lead.person.phone}`}
+                                className="p-1.5 hover:bg-green-50 rounded text-gray-400 hover:text-green-600 transition-colors"
+                                title="Teléfono"
+                              >
+                                <Phone size={14} />
+                              </a>
+                            )}
                           </div>
                         </div>
-                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-light rounded">
-                          <MoreVertical size={16} className="text-gray-400" />
-                        </button>
-                      </div>
+                      );
+                    })}
 
-                      {/* Card Info */}
-                      <div className="space-y-2 mb-3">
-                        <div className="flex items-center gap-2 text-xs text-gray-text">
-                          <Calendar size={12} />
-                          <span>Último contacto: {lead.lastContact}</span>
-                        </div>
-                        <div className="text-xs">
-                          <span className="text-gray-text">Próxima acción: </span>
-                          <span className="text-gray-dark font-medium">{lead.nextAction}</span>
-                        </div>
+                    {getLeadsByStage(stage.id).length === 0 && (
+                      <div className="text-center py-8 text-sm text-gray-400">
+                        No hay leads en esta etapa
                       </div>
-
-                      {/* Urgency Badge */}
-                      <div className="flex items-center justify-between">
-                        <div className={`w-2 h-2 rounded-full ${getUrgencyBadge(lead.urgency)}`} />
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-1.5 hover:bg-blue-50 rounded text-gray-400 hover:text-blue-600 transition-colors">
-                            <Linkedin size={14} />
-                          </button>
-                          <button className="p-1.5 hover:bg-purple-50 rounded text-gray-400 hover:text-purple-600 transition-colors">
-                            <Mail size={14} />
-                          </button>
-                          <button className="p-1.5 hover:bg-green-50 rounded text-gray-400 hover:text-green-600 transition-colors">
-                            <Phone size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Legend */}
-        <div className="bg-white border-t border-gray-border px-8 py-4">
-          <div className="flex items-center gap-6 text-xs">
-            <span className="text-gray-text">Urgencia:</span>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-gray-text">Alta</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-yellow-500" />
-              <span className="text-gray-text">Media</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-gray-text">Baja</span>
-            </div>
-            <span className="text-gray-400 ml-auto">
+        <div className="bg-white border-t border-gray-200 px-6 py-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-500">
               💡 Arrastra las tarjetas para moverlas entre etapas
             </span>
+            <Link
+              href="/conversaciones"
+              className="text-primary hover:text-primary-dark font-medium"
+            >
+              Ver conversaciones →
+            </Link>
           </div>
         </div>
       </div>

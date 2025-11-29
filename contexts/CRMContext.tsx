@@ -36,19 +36,24 @@ export interface Meeting {
   createdAt: Date;
 }
 
+export type ConversationStatus = 'nuevo' | 'pendiente' | 'respondido';
+
 export interface Conversation {
   id: string;
   leadId: string;
   personId: string;
   channel: 'linkedin' | 'email' | 'whatsapp';
+  status: ConversationStatus;
   messages: {
     id: string;
     from: 'user' | 'contact';
     content: string;
     timestamp: Date;
+    channel: 'linkedin' | 'email' | 'whatsapp';
   }[];
   lastMessage: Date;
   unread: boolean;
+  createdAt: Date;
 }
 
 interface CRMContextType {
@@ -68,7 +73,11 @@ interface CRMContextType {
 
   // Conversation operations
   getConversation: (leadId: string) => Conversation | undefined;
+  getConversationById: (conversationId: string) => Conversation | undefined;
+  createConversation: (leadId: string, personId: string, channel: 'linkedin' | 'email' | 'whatsapp', initialMessage?: string) => string;
   addMessage: (conversationId: string, message: Omit<Conversation['messages'][0], 'id' | 'timestamp'>) => void;
+  markConversationAsRead: (conversationId: string) => void;
+  updateConversationStatus: (conversationId: string, status: ConversationStatus) => void;
 
   // Utilities
   getLeadByPersonId: (personId: string) => Lead | undefined;
@@ -79,7 +88,101 @@ const CRMContext = createContext<CRMContextType | undefined>(undefined);
 export function CRMProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([
+    // Demo conversations
+    {
+      id: 'conv-1',
+      leadId: 'lead-demo-1',
+      personId: 'p001',
+      channel: 'linkedin',
+      status: 'nuevo',
+      messages: [
+        {
+          id: 'msg-1',
+          from: 'contact',
+          content: 'Hola! Vi tu mensaje sobre End2End. Me interesa conocer más sobre cómo pueden ayudarnos a mejorar nuestro proceso de generación de leads.',
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          channel: 'linkedin',
+        },
+      ],
+      lastMessage: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      unread: true,
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    },
+    {
+      id: 'conv-2',
+      leadId: 'lead-demo-2',
+      personId: 'p002',
+      channel: 'email',
+      status: 'pendiente',
+      messages: [
+        {
+          id: 'msg-2',
+          from: 'contact',
+          content: 'Hola,\n\nRecibí tu email sobre automatización de ventas. Nos interesa mucho. ¿Podemos agendar una llamada esta semana?\n\nSaludos,\nAna',
+          timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
+          channel: 'email',
+        },
+        {
+          id: 'msg-3',
+          from: 'user',
+          content: 'Hola Ana,\n\nPerfecto! Me alegra que te interese. ¿Qué tal el jueves a las 15:00 hs?\n\nSaludos,',
+          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+          channel: 'email',
+        },
+        {
+          id: 'msg-4',
+          from: 'contact',
+          content: 'Perfecto, me viene bien. ¿Me mandás el link de la reunión?',
+          timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
+          channel: 'email',
+        },
+      ],
+      lastMessage: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      unread: true,
+      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
+    },
+    {
+      id: 'conv-3',
+      leadId: 'lead-demo-3',
+      personId: 'p003',
+      channel: 'whatsapp',
+      status: 'respondido',
+      messages: [
+        {
+          id: 'msg-5',
+          from: 'contact',
+          content: 'Hola! Me contactaste hace unos días. Me interesa saber más sobre End2End.',
+          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          channel: 'whatsapp',
+        },
+        {
+          id: 'msg-6',
+          from: 'user',
+          content: 'Hola! Claro, End2End es una plataforma que te ayuda a automatizar todo el proceso de generación de leads. ¿Tenés unos minutos para una demo rápida?',
+          timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000),
+          channel: 'whatsapp',
+        },
+        {
+          id: 'msg-7',
+          from: 'contact',
+          content: 'Sí, me interesa. ¿Podemos coordinar para la próxima semana?',
+          timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000),
+          channel: 'whatsapp',
+        },
+        {
+          id: 'msg-8',
+          from: 'user',
+          content: 'Perfecto! Te mando un link para que elijas el horario que mejor te venga.',
+          timestamp: new Date(Date.now() - 21 * 60 * 60 * 1000),
+          channel: 'whatsapp',
+        },
+      ],
+      lastMessage: new Date(Date.now() - 21 * 60 * 60 * 1000),
+      unread: false,
+      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    },
+  ]);
 
   const createLead = (personId: string) => {
     const existing = leads.find(l => l.personId === personId);
@@ -172,6 +275,41 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     return conversations.find(c => c.leadId === leadId);
   };
 
+  const getConversationById = (conversationId: string) => {
+    return conversations.find(c => c.id === conversationId);
+  };
+
+  const createConversation = (
+    leadId: string,
+    personId: string,
+    channel: 'linkedin' | 'email' | 'whatsapp',
+    initialMessage?: string
+  ): string => {
+    const existing = conversations.find(c => c.leadId === leadId);
+    if (existing) return existing.id;
+
+    const newConversation: Conversation = {
+      id: `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      leadId,
+      personId,
+      channel,
+      status: 'nuevo',
+      messages: initialMessage ? [{
+        id: `msg-${Date.now()}-1`,
+        from: 'contact',
+        content: initialMessage,
+        timestamp: new Date(),
+        channel,
+      }] : [],
+      lastMessage: new Date(),
+      unread: !!initialMessage,
+      createdAt: new Date(),
+    };
+
+    setConversations(prev => [...prev, newConversation]);
+    return newConversation.id;
+  };
+
   const addMessage = (conversationId: string, message: Omit<Conversation['messages'][0], 'id' | 'timestamp'>) => {
     setConversations(prev =>
       prev.map(conv => {
@@ -182,15 +320,45 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             timestamp: new Date(),
           };
 
+          // If user is sending, mark as responded and read
+          const newStatus = message.from === 'user' ? 'respondido' : conv.status;
+          const unread = message.from === 'contact';
+
           return {
             ...conv,
             messages: [...conv.messages, newMessage],
             lastMessage: new Date(),
-            unread: message.from === 'contact',
+            status: newStatus,
+            unread,
           };
         }
         return conv;
       })
+    );
+  };
+
+  const markConversationAsRead = (conversationId: string) => {
+    setConversations(prev =>
+      prev.map(conv => {
+        if (conv.id === conversationId) {
+          return {
+            ...conv,
+            unread: false,
+            status: conv.status === 'nuevo' ? 'pendiente' : conv.status,
+          };
+        }
+        return conv;
+      })
+    );
+  };
+
+  const updateConversationStatus = (conversationId: string, status: ConversationStatus) => {
+    setConversations(prev =>
+      prev.map(conv =>
+        conv.id === conversationId
+          ? { ...conv, status }
+          : conv
+      )
     );
   };
 
@@ -211,7 +379,11 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         scheduleMeeting,
         updateMeeting,
         getConversation,
+        getConversationById,
+        createConversation,
         addMessage,
+        markConversationAsRead,
+        updateConversationStatus,
         getLeadByPersonId,
       }}
     >

@@ -56,7 +56,7 @@ export default function Home() {
     const hasLists = lists.length > 0;
     const hasActiveSequences = sequences.some(s => s.status === 'activa');
     const hasWarmupActions = leads.some(lead => lead.warmupActions && lead.warmupActions.length > 0);
-    const hasConversations = leads.some(lead => lead.status === 'respondio' || lead.status === 'interesado');
+    const hasConversations = leads.some(lead => lead.status === 'respondio');
 
     return {
       hasLists,

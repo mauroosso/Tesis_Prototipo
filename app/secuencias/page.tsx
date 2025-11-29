@@ -2,82 +2,63 @@
 
 import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { Linkedin, Mail, MessageCircle, Calendar, Plus, Play, Pause, Edit, Copy, Trash2, Sparkles } from 'lucide-react';
-
-interface SequenceStep {
-  id: string;
-  day: number;
-  channel: 'linkedin' | 'email' | 'whatsapp';
-  type: string;
-  subject?: string;
-  message: string;
-}
-
-interface Sequence {
-  id: string;
-  name: string;
-  status: 'activa' | 'pausada' | 'borrador';
-  contacts: number;
-  openRate: number;
-  responseRate: number;
-  steps: SequenceStep[];
-}
-
-const mockSequences: Sequence[] = [
-  {
-    id: 'seq-1',
-    name: 'Outreach Founders Tech LATAM',
-    status: 'activa',
-    contacts: 45,
-    openRate: 68,
-    responseRate: 22,
-    steps: [
-      {
-        id: 'step-1',
-        day: 1,
-        channel: 'linkedin',
-        type: 'Invitación',
-        message: 'Hola {nombre}, vi que liderás {empresa} en {industria}. Me encantaría conectar y compartir algunos insights sobre cómo otras empresas similares están escalando en LATAM.',
-      },
-      {
-        id: 'step-2',
-        day: 3,
-        channel: 'email',
-        type: 'Seguimiento',
-        subject: 'Re: Escalando en LATAM',
-        message: 'Hola {nombre},\n\nVi que aceptaste mi invitación en LinkedIn - ¡gracias!\n\nTe escribo porque ayudamos a empresas como {empresa} a optimizar su proceso de generación de leads. Trabajamos con +50 empresas tech en LATAM y hemos visto resultados consistentes.\n\n¿Tendrías 15 minutos esta semana para una charla rápida?\n\nSaludos,',
-      },
-      {
-        id: 'step-3',
-        day: 7,
-        channel: 'whatsapp',
-        type: 'Mensaje corto',
-        message: 'Hola {nombre}! 👋 Te escribí por email hace unos días. ¿Tenés unos minutos para charlar sobre cómo ayudamos a empresas como {empresa}?',
-      },
-      {
-        id: 'step-4',
-        day: 10,
-        channel: 'email',
-        type: 'Caso de éxito',
-        subject: 'Caso: {empresa_similar} aumentó leads 300%',
-        message: 'Hola {nombre},\n\nQuiero compartirte un caso de éxito que puede resonar con lo que están haciendo en {empresa}.\n\n{empresa_similar}, una empresa {industria} similar a la tuya, logró aumentar su generación de leads en 300% en 4 meses usando nuestra plataforma.\n\n¿Te interesa conocer cómo lo hicieron?\n\nPodemos agendar una llamada breve.',
-      },
-    ],
-  },
-];
+import { useSequences, type Sequence, type SequenceStep } from '@/contexts/SequencesContext';
+import { useLists } from '@/contexts/ListsContext';
+import {
+  Linkedin, Mail, MessageCircle, Plus, Play, Pause, Edit, Copy, Trash2,
+  Sparkles, X, Save, Calendar, ChevronDown
+} from 'lucide-react';
 
 export default function SecuenciasPage() {
-  const [sequences] = useState<Sequence[]>(mockSequences);
-  const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(sequences[0]);
+  const {
+    sequences,
+    createSequence,
+    updateSequence,
+    deleteSequence,
+    duplicateSequence,
+    pauseSequence,
+    activateSequence,
+    addStep,
+    updateStep,
+    deleteStep,
+  } = useSequences();
+
+  const { lists, getListsByType } = useLists();
+
+  const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(
+    sequences.length > 0 ? sequences[0] : null
+  );
+
+  // Modals state
+  const [showNewSequenceModal, setShowNewSequenceModal] = useState(false);
+  const [showEditStepModal, setShowEditStepModal] = useState(false);
+  const [showAddStepModal, setShowAddStepModal] = useState(false);
+  const [editingStep, setEditingStep] = useState<SequenceStep | null>(null);
+
+  // New sequence form
+  const [newSequenceName, setNewSequenceName] = useState('');
+  const [newSequenceList, setNewSequenceList] = useState<string | null>(null);
+  const [newSequenceChannel, setNewSequenceChannel] = useState<'linkedin' | 'email' | 'whatsapp'>('linkedin');
+  const [newSequenceDay, setNewSequenceDay] = useState(1);
+  const [newSequenceMessage, setNewSequenceMessage] = useState('');
+
+  // Edit/Add step form
+  const [stepFormData, setStepFormData] = useState({
+    day: 1,
+    channel: 'linkedin' as 'linkedin' | 'email' | 'whatsapp',
+    title: '',
+    subject: '',
+    message: '',
+  });
 
   const getChannelIcon = (channel: 'linkedin' | 'email' | 'whatsapp') => {
     switch (channel) {
       case 'linkedin':
-        return <Linkedin size={20} className="text-blue-600" />;
+        return <Linkedin size={18} className="text-blue-600" />;
       case 'email':
-        return <Mail size={20} className="text-purple-600" />;
+        return <Mail size={18} className="text-purple-600" />;
       case 'whatsapp':
-        return <MessageCircle size={20} className="text-green-600" />;
+        return <MessageCircle size={18} className="text-green-600" />;
     }
   };
 
@@ -94,123 +75,247 @@ export default function SecuenciasPage() {
 
   const getStatusBadge = (status: Sequence['status']) => {
     const styles = {
-      activa: 'bg-green-50 text-green-600 border-green-200',
-      pausada: 'bg-yellow-50 text-yellow-600 border-yellow-200',
-      borrador: 'bg-gray-50 text-gray-600 border-gray-200',
+      activa: 'badge-green',
+      pausada: 'badge-yellow',
+      borrador: 'badge-gray',
     };
     return styles[status];
   };
 
+  const handleCreateSequence = () => {
+    if (!newSequenceName.trim()) return;
+
+    const firstStep = {
+      day: newSequenceDay,
+      channel: newSequenceChannel,
+      title: 'Primer contacto',
+      message: newSequenceMessage || 'Hola {nombre}, ...',
+    };
+
+    const newId = createSequence(newSequenceName, newSequenceList, firstStep);
+    const newSeq = sequences.find(s => s.id === newId);
+    if (newSeq) {
+      setSelectedSequence(newSeq);
+    }
+
+    // Reset form
+    setNewSequenceName('');
+    setNewSequenceList(null);
+    setNewSequenceChannel('linkedin');
+    setNewSequenceDay(1);
+    setNewSequenceMessage('');
+    setShowNewSequenceModal(false);
+  };
+
+  const handleEditStep = (step: SequenceStep) => {
+    setEditingStep(step);
+    setStepFormData({
+      day: step.day,
+      channel: step.channel,
+      title: step.title,
+      subject: step.subject || '',
+      message: step.message,
+    });
+    setShowEditStepModal(true);
+  };
+
+  const handleSaveEditStep = () => {
+    if (!selectedSequence || !editingStep) return;
+
+    updateStep(selectedSequence.id, editingStep.id, {
+      day: stepFormData.day,
+      channel: stepFormData.channel,
+      title: stepFormData.title,
+      subject: stepFormData.subject || undefined,
+      message: stepFormData.message,
+    });
+
+    setShowEditStepModal(false);
+    setEditingStep(null);
+  };
+
+  const handleAddStep = () => {
+    if (!selectedSequence) return;
+
+    addStep(selectedSequence.id, {
+      day: stepFormData.day,
+      channel: stepFormData.channel,
+      title: stepFormData.title,
+      subject: stepFormData.subject || undefined,
+      message: stepFormData.message,
+    });
+
+    setShowAddStepModal(false);
+    // Reset form
+    setStepFormData({
+      day: (selectedSequence.steps[selectedSequence.steps.length - 1]?.day || 0) + 2,
+      channel: 'email',
+      title: '',
+      subject: '',
+      message: '',
+    });
+  };
+
+  const handleDeleteSequence = () => {
+    if (!selectedSequence) return;
+    if (!confirm(`¿Estás seguro de eliminar la secuencia "${selectedSequence.name}"?`)) return;
+
+    deleteSequence(selectedSequence.id);
+    setSelectedSequence(sequences.length > 1 ? sequences[0] : null);
+  };
+
+  const handleDuplicateSequence = () => {
+    if (!selectedSequence) return;
+    const newId = duplicateSequence(selectedSequence.id);
+    const duplicated = sequences.find(s => s.id === newId);
+    if (duplicated) {
+      setSelectedSequence(duplicated);
+    }
+  };
+
+  const handleToggleStatus = () => {
+    if (!selectedSequence) return;
+    if (selectedSequence.status === 'activa') {
+      pauseSequence(selectedSequence.id);
+    } else {
+      activateSequence(selectedSequence.id);
+    }
+  };
+
+  const handleDeleteStep = (stepId: string) => {
+    if (!selectedSequence) return;
+    if (!confirm('¿Eliminar este paso?')) return;
+    deleteStep(selectedSequence.id, stepId);
+  };
+
+  const peopleLists = getListsByType('people');
+
   return (
     <AppLayout>
-      <div className="h-full flex flex-col bg-gray-light">
+      <div className="h-full flex flex-col" style={{ background: 'var(--bg-secondary)' }}>
         {/* Header */}
-        <div className="bg-white border-b border-gray-border px-8 py-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-light text-gray-dark mb-1">Secuencias Multicanal</h1>
-              <p className="text-sm text-gray-text">
-                Automatiza tu outreach con mensajes personalizados
-              </p>
+        <div className="bg-white border-b" style={{ borderColor: 'var(--border-light)' }}>
+          <div className="px-8 py-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--gray-800)' }}>
+                  Secuencias Multicanal
+                </h1>
+                <p className="text-sm" style={{ color: 'var(--gray-500)' }}>
+                  Automatiza tu outreach con mensajes personalizados estilo Lemlist
+                </p>
+              </div>
+              <button
+                onClick={() => setShowNewSequenceModal(true)}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Plus size={16} />
+                Nueva secuencia
+              </button>
             </div>
-            <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors">
-              <Plus size={16} />
-              Nueva secuencia
-            </button>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Sequences List */}
-          <aside className="w-80 bg-white border-r border-gray-border overflow-y-auto">
-            <div className="p-4 border-b border-gray-border">
-              <h3 className="text-sm font-semibold text-gray-dark mb-1">Mis secuencias</h3>
-              <p className="text-xs text-gray-text">{sequences.length} secuencias creadas</p>
+          {/* Sequences List - Left Panel */}
+          <aside className="w-80 bg-white border-r overflow-y-auto" style={{ borderColor: 'var(--border-light)' }}>
+            <div className="p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
+              <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--gray-700)' }}>
+                Mis secuencias
+              </h3>
+              <p className="text-xs" style={{ color: 'var(--gray-500)' }}>
+                {sequences.length} secuencias creadas
+              </p>
             </div>
             <div className="p-3 space-y-2">
               {sequences.map(seq => (
                 <div
                   key={seq.id}
                   onClick={() => setSelectedSequence(seq)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                    selectedSequence?.id === seq.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-border hover:border-gray-300 hover:bg-gray-light/50'
+                  className={`phantom-card p-4 cursor-pointer transition-all ${
+                    selectedSequence?.id === seq.id ? 'border-primary shadow-md' : ''
                   }`}
+                  style={{
+                    borderColor: selectedSequence?.id === seq.id ? 'var(--primary-blue)' : undefined,
+                  }}
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-dark">{seq.name}</h4>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusBadge(seq.status)}`}>
+                    <h4 className="text-sm font-medium" style={{ color: 'var(--gray-800)' }}>
+                      {seq.name}
+                    </h4>
+                    <span className={`badge ${getStatusBadge(seq.status)}`}>
                       {seq.status}
                     </span>
                   </div>
-                  <div className="space-y-1 text-xs text-gray-text">
-                    <p>{seq.contacts} contactos activos</p>
-                    <p>Apertura: {seq.openRate}% • Respuesta: {seq.responseRate}%</p>
+                  <div className="space-y-1 text-xs" style={{ color: 'var(--gray-500)' }}>
+                    <p>{seq.contacts.length} contactos activos</p>
+                    <p>Apertura: {seq.metrics.openRate.toFixed(1)}% • Respuesta: {seq.metrics.replyRate.toFixed(1)}%</p>
                   </div>
                 </div>
               ))}
             </div>
           </aside>
 
-          {/* Sequence Detail */}
+          {/* Sequence Detail - Right Panel */}
           {selectedSequence && (
             <div className="flex-1 overflow-y-auto">
               {/* Sequence Header */}
-              <div className="bg-white border-b border-gray-border px-8 py-6">
+              <div className="bg-white border-b px-8 py-6" style={{ borderColor: 'var(--border-light)' }}>
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h2 className="text-xl font-medium text-gray-dark mb-2">
+                    <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--gray-800)' }}>
                       {selectedSequence.name}
                     </h2>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-text">
-                        {selectedSequence.contacts} contactos activos
-                      </span>
-                      <span className="text-gray-300">•</span>
-                      <span className="text-gray-text">
-                        {selectedSequence.steps.length} pasos
-                      </span>
+                    <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--gray-500)' }}>
+                      <span>{selectedSequence.contacts.length} contactos activos</span>
+                      <span>•</span>
+                      <span>{selectedSequence.steps.length} pasos</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {selectedSequence.status === 'activa' ? (
-                      <button className="flex items-center gap-2 border border-gray-border px-4 py-2 rounded-lg text-sm font-medium text-gray-dark hover:bg-gray-light transition-colors">
-                        <Pause size={16} />
-                        Pausar
-                      </button>
-                    ) : (
-                      <button className="flex items-center gap-2 bg-success text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-success-dark transition-colors">
-                        <Play size={16} />
-                        Activar
-                      </button>
-                    )}
-                    <button className="p-2 border border-gray-border rounded-lg hover:bg-gray-light transition-colors">
-                      <Edit size={16} className="text-gray-600" />
+                    <button
+                      onClick={handleToggleStatus}
+                      className={selectedSequence.status === 'activa' ? 'btn-secondary' : 'btn-primary'}
+                    >
+                      {selectedSequence.status === 'activa' ? (
+                        <>
+                          <Pause size={16} />
+                          Pausar
+                        </>
+                      ) : (
+                        <>
+                          <Play size={16} />
+                          Activar
+                        </>
+                      )}
                     </button>
-                    <button className="p-2 border border-gray-border rounded-lg hover:bg-gray-light transition-colors">
-                      <Copy size={16} className="text-gray-600" />
+                    <button onClick={handleDuplicateSequence} className="btn-secondary p-2">
+                      <Copy size={16} />
                     </button>
-                    <button className="p-2 border border-gray-border rounded-lg hover:bg-red-50 transition-colors">
+                    <button onClick={handleDeleteSequence} className="btn-secondary p-2 hover:bg-red-50">
                       <Trash2 size={16} className="text-red-600" />
                     </button>
                   </div>
                 </div>
 
-                {/* Stats */}
+                {/* Metrics */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-gray-light rounded-lg p-4">
-                    <p className="text-xs text-gray-text mb-1">Tasa de apertura</p>
-                    <p className="text-2xl font-semibold text-gray-dark">{selectedSequence.openRate}%</p>
+                  <div className="phantom-card p-4">
+                    <p className="text-xs mb-1" style={{ color: 'var(--gray-500)' }}>Apertura</p>
+                    <p className="text-2xl font-semibold" style={{ color: 'var(--gray-800)' }}>
+                      {selectedSequence.metrics.openRate.toFixed(1)}%
+                    </p>
                   </div>
-                  <div className="bg-gray-light rounded-lg p-4">
-                    <p className="text-xs text-gray-text mb-1">Tasa de respuesta</p>
-                    <p className="text-2xl font-semibold text-primary">{selectedSequence.responseRate}%</p>
+                  <div className="phantom-card p-4">
+                    <p className="text-xs mb-1" style={{ color: 'var(--gray-500)' }}>Respuesta</p>
+                    <p className="text-2xl font-semibold" style={{ color: 'var(--primary-blue)' }}>
+                      {selectedSequence.metrics.replyRate.toFixed(1)}%
+                    </p>
                   </div>
-                  <div className="bg-gray-light rounded-lg p-4">
-                    <p className="text-xs text-gray-text mb-1">Conversiones</p>
-                    <p className="text-2xl font-semibold text-success">
-                      {Math.round(selectedSequence.contacts * (selectedSequence.responseRate / 100))}
+                  <div className="phantom-card p-4">
+                    <p className="text-xs mb-1" style={{ color: 'var(--gray-500)' }}>Conversiones</p>
+                    <p className="text-2xl font-semibold" style={{ color: 'var(--success)' }}>
+                      {selectedSequence.metrics.conversions}
                     </p>
                   </div>
                 </div>
@@ -219,128 +324,424 @@ export default function SecuenciasPage() {
               {/* Timeline */}
               <div className="p-8">
                 <div className="max-w-4xl mx-auto">
-                  <h3 className="text-lg font-medium text-gray-dark mb-6">Timeline de la secuencia</h3>
+                  <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--gray-800)' }}>
+                    Timeline de la secuencia
+                  </h3>
 
-                  <div className="relative">
-                    {/* Vertical Line */}
-                    <div className="absolute left-[2rem] top-8 bottom-8 w-0.5 bg-gray-border" />
-
-                    {/* Steps */}
-                    <div className="space-y-8">
-                      {selectedSequence.steps.map((step, index) => (
-                        <div key={step.id} className="relative flex gap-6">
-                          {/* Day Indicator */}
-                          <div className="flex flex-col items-center w-16 flex-shrink-0">
-                            <div className="w-16 h-16 rounded-full bg-white border-2 border-primary flex items-center justify-center z-10">
-                              <div className="text-center">
-                                <div className="text-xs text-gray-text">Día</div>
-                                <div className="text-lg font-semibold text-primary">{step.day}</div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Step Card */}
-                          <div className="flex-1 bg-white rounded-lg border border-gray-border p-6 card-hover">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg border ${getChannelBg(step.channel)}`}>
-                                  {getChannelIcon(step.channel)}
-                                </div>
-                                <div>
-                                  <h4 className="text-base font-medium text-gray-dark capitalize">
-                                    {step.channel} - {step.type}
-                                  </h4>
-                                  {step.subject && (
-                                    <p className="text-sm text-gray-text mt-0.5">
-                                      Asunto: {step.subject}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <button className="text-sm text-primary hover:text-primary-dark font-medium transition-colors">
-                                Editar
-                              </button>
-                            </div>
-
-                            {/* Message Preview */}
-                            <div className="bg-gray-light rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
-                              {step.message}
-                            </div>
-
-                            {/* Variables Used */}
-                            <div className="mt-4 flex items-center gap-2 text-xs">
-                              <span className="text-gray-text">Variables:</span>
-                              {['nombre', 'empresa', 'industria'].map(variable => (
-                                <span
-                                  key={variable}
-                                  className="bg-primary/10 text-primary px-2 py-0.5 rounded font-mono"
-                                >
-                                  {`{${variable}}`}
-                                </span>
-                              ))}
-                            </div>
+                  <div className="space-y-6">
+                    {selectedSequence.steps.map((step, index) => (
+                      <div key={step.id} className="timeline-step">
+                        <div className="timeline-dot">
+                          <div className="text-xs font-semibold" style={{ color: 'var(--primary-blue)' }}>
+                            {step.day}
                           </div>
                         </div>
-                      ))}
-                    </div>
+
+                        <div className="phantom-card p-6 card-hover">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg border ${getChannelBg(step.channel)}`}>
+                                {getChannelIcon(step.channel)}
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium capitalize" style={{ color: 'var(--gray-800)' }}>
+                                  {step.title}
+                                </h4>
+                                {step.subject && (
+                                  <p className="text-sm mt-0.5" style={{ color: 'var(--gray-500)' }}>
+                                    Asunto: {step.subject}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleEditStep(step)}
+                                className="text-sm font-medium hover:underline"
+                                style={{ color: 'var(--primary-blue)' }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStep(step.id)}
+                                className="text-sm font-medium text-red-600 hover:underline"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          </div>
+
+                          <div
+                            className="p-4 rounded-lg text-sm whitespace-pre-wrap"
+                            style={{ background: 'var(--gray-100)', color: 'var(--gray-700)' }}
+                          >
+                            {step.message}
+                          </div>
+
+                          <div className="mt-4 flex items-center gap-2 text-xs">
+                            <span style={{ color: 'var(--gray-500)' }}>Variables:</span>
+                            {['nombre', 'empresa', 'industria', 'cargo', 'pain'].map(variable => (
+                              <span
+                                key={variable}
+                                className="badge-blue font-mono"
+                              >
+                                {`{${variable}}`}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Add Step Button */}
-                  <button className="mt-8 w-full border-2 border-dashed border-gray-300 rounded-lg py-4 text-gray-text hover:border-primary hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      setStepFormData({
+                        day: (selectedSequence.steps[selectedSequence.steps.length - 1]?.day || 0) + 2,
+                        channel: 'email',
+                        title: '',
+                        subject: '',
+                        message: '',
+                      });
+                      setShowAddStepModal(true);
+                    }}
+                    className="mt-8 w-full border-2 border-dashed rounded-lg py-4 transition-all flex items-center justify-center gap-2"
+                    style={{
+                      borderColor: 'var(--border-medium)',
+                      color: 'var(--gray-500)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary-blue)';
+                      e.currentTarget.style.color = 'var(--primary-blue)';
+                      e.currentTarget.style.background = 'var(--primary-blue-lighter)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-medium)';
+                      e.currentTarget.style.color = 'var(--gray-500)';
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
                     <Plus size={20} />
                     <span className="font-medium">Agregar nuevo paso</span>
                   </button>
                 </div>
               </div>
-
-              {/* Important Notice */}
-              <div className="px-8 pb-8">
-                <div className="max-w-4xl mx-auto bg-blue-50 border border-blue-100 rounded-lg p-6">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 text-2xl">
-                      ✉️
-                    </div>
-                    <div>
-                      <h4 className="text-base font-medium text-gray-dark mb-2">
-                        Solo enviamos mensajes reales, nunca spam
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        Nuestra plataforma está diseñada para respetar las mejores prácticas de outreach.
-                        Los mensajes se envían de forma natural, con intervalos realistas y siempre personalizados.
-                        Jamás enviaremos mensajes masivos que puedan dañar tu reputación.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Suggestion */}
-              <div className="px-8 pb-8">
-                <div className="max-w-4xl mx-auto bg-gradient-to-r from-primary/10 to-success/10 border border-primary/20 rounded-lg p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
-                        <Sparkles className="text-primary" size={24} />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-base font-medium text-gray-dark mb-2">
-                        Optimiza tu secuencia con IA
-                      </h4>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Nuestra IA puede analizar tus mensajes y sugerir mejoras basadas en miles de secuencias exitosas en LATAM.
-                      </p>
-                      <button className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        <Sparkles size={16} />
-                        Optimizar con IA
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </div>
+
+        {/* New Sequence Modal */}
+        {showNewSequenceModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold" style={{ color: 'var(--gray-800)' }}>
+                  Nueva Secuencia
+                </h2>
+                <button onClick={() => setShowNewSequenceModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                    Nombre de la secuencia
+                  </label>
+                  <input
+                    type="text"
+                    value={newSequenceName}
+                    onChange={(e) => setNewSequenceName(e.target.value)}
+                    placeholder="Ej: Outreach Founders Tech LATAM"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                    Lista de personas (opcional)
+                  </label>
+                  <select
+                    value={newSequenceList || ''}
+                    onChange={(e) => setNewSequenceList(e.target.value || null)}
+                    className="w-full"
+                  >
+                    <option value="">Sin lista (agregar contactos después)</option>
+                    {peopleLists.map(list => (
+                      <option key={list.id} value={list.id}>
+                        {list.name} ({list.items.length} personas)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="border-t pt-6" style={{ borderColor: 'var(--border-light)' }}>
+                  <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--gray-800)' }}>
+                    Primer paso
+                  </h3>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                        Canal
+                      </label>
+                      <select
+                        value={newSequenceChannel}
+                        onChange={(e) => setNewSequenceChannel(e.target.value as any)}
+                        className="w-full"
+                      >
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="email">Email</option>
+                        <option value="whatsapp">WhatsApp</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                        Día
+                      </label>
+                      <input
+                        type="number"
+                        value={newSequenceDay}
+                        onChange={(e) => setNewSequenceDay(parseInt(e.target.value) || 1)}
+                        min="1"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                      Mensaje
+                    </label>
+                    <textarea
+                      value={newSequenceMessage}
+                      onChange={(e) => setNewSequenceMessage(e.target.value)}
+                      rows={6}
+                      placeholder="Hola {nombre}, vi que sos {cargo} en {empresa}..."
+                      className="w-full"
+                    />
+                    <p className="text-xs mt-2" style={{ color: 'var(--gray-500)' }}>
+                      Variables disponibles: {'{nombre}'}, {'{empresa}'}, {'{industria}'}, {'{cargo}'}, {'{pain}'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-4">
+                  <button
+                    onClick={handleCreateSequence}
+                    disabled={!newSequenceName.trim()}
+                    className="btn-primary flex-1"
+                  >
+                    <Save size={16} />
+                    Crear secuencia
+                  </button>
+                  <button onClick={() => setShowNewSequenceModal(false)} className="btn-secondary">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Step Modal */}
+        {showEditStepModal && editingStep && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold" style={{ color: 'var(--gray-800)' }}>
+                  Editar Paso
+                </h2>
+                <button onClick={() => setShowEditStepModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                      Día
+                    </label>
+                    <input
+                      type="number"
+                      value={stepFormData.day}
+                      onChange={(e) => setStepFormData({ ...stepFormData, day: parseInt(e.target.value) || 1 })}
+                      min="1"
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                      Canal
+                    </label>
+                    <select
+                      value={stepFormData.channel}
+                      onChange={(e) => setStepFormData({ ...stepFormData, channel: e.target.value as any })}
+                      className="w-full"
+                    >
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="email">Email</option>
+                      <option value="whatsapp">WhatsApp</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                    Título
+                  </label>
+                  <input
+                    type="text"
+                    value={stepFormData.title}
+                    onChange={(e) => setStepFormData({ ...stepFormData, title: e.target.value })}
+                    placeholder="Ej: Follow-up email"
+                    className="w-full"
+                  />
+                </div>
+
+                {stepFormData.channel === 'email' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                      Asunto (solo para email)
+                    </label>
+                    <input
+                      type="text"
+                      value={stepFormData.subject}
+                      onChange={(e) => setStepFormData({ ...stepFormData, subject: e.target.value })}
+                      placeholder="Re: ..."
+                      className="w-full"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                    Mensaje
+                  </label>
+                  <textarea
+                    value={stepFormData.message}
+                    onChange={(e) => setStepFormData({ ...stepFormData, message: e.target.value })}
+                    rows={8}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-4">
+                  <button onClick={handleSaveEditStep} className="btn-primary flex-1">
+                    <Save size={16} />
+                    Guardar cambios
+                  </button>
+                  <button onClick={() => setShowEditStepModal(false)} className="btn-secondary">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Step Modal */}
+        {showAddStepModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold" style={{ color: 'var(--gray-800)' }}>
+                  Agregar Paso
+                </h2>
+                <button onClick={() => setShowAddStepModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                      Día
+                    </label>
+                    <input
+                      type="number"
+                      value={stepFormData.day}
+                      onChange={(e) => setStepFormData({ ...stepFormData, day: parseInt(e.target.value) || 1 })}
+                      min="1"
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                      Canal
+                    </label>
+                    <select
+                      value={stepFormData.channel}
+                      onChange={(e) => setStepFormData({ ...stepFormData, channel: e.target.value as any })}
+                      className="w-full"
+                    >
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="email">Email</option>
+                      <option value="whatsapp">WhatsApp</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                    Título
+                  </label>
+                  <input
+                    type="text"
+                    value={stepFormData.title}
+                    onChange={(e) => setStepFormData({ ...stepFormData, title: e.target.value })}
+                    placeholder="Ej: Follow-up email"
+                    className="w-full"
+                  />
+                </div>
+
+                {stepFormData.channel === 'email' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                      Asunto (solo para email)
+                    </label>
+                    <input
+                      type="text"
+                      value={stepFormData.subject}
+                      onChange={(e) => setStepFormData({ ...stepFormData, subject: e.target.value })}
+                      placeholder="Re: ..."
+                      className="w-full"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--gray-700)' }}>
+                    Mensaje
+                  </label>
+                  <textarea
+                    value={stepFormData.message}
+                    onChange={(e) => setStepFormData({ ...stepFormData, message: e.target.value })}
+                    rows={8}
+                    placeholder="Hola {nombre}, ..."
+                    className="w-full"
+                  />
+                  <p className="text-xs mt-2" style={{ color: 'var(--gray-500)' }}>
+                    Variables: {'{nombre}'}, {'{empresa}'}, {'{industria}'}, {'{cargo}'}, {'{pain}'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 pt-4">
+                  <button onClick={handleAddStep} className="btn-primary flex-1">
+                    <Plus size={16} />
+                    Agregar paso
+                  </button>
+                  <button onClick={() => setShowAddStepModal(false)} className="btn-secondary">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

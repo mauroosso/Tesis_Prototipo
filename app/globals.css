@@ -2,7 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* PhantomBuster + Lemlist Color Palette */
+  --primary-blue: #4F7CF9;
+  --primary-blue-dark: #3E6BDB;
+  --primary-blue-light: #6B93FF;
+  --primary-blue-lighter: #E8EFFF;
+
+  /* Neutrals */
+  --gray-50: #FAFBFC;
+  --gray-100: #F5F7FA;
+  --gray-200: #E8ECF1;
+  --gray-300: #D1D9E2;
+  --gray-400: #9BA6B4;
+  --gray-500: #6E7A8A;
+  --gray-600: #4A5568;
+  --gray-700: #2D3748;
+  --gray-800: #1A202C;
+  --gray-900: #0F1419;
+
+  /* Semantic Colors */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+
+  /* Backgrounds */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #FAFBFC;
+  --bg-tertiary: #F5F7FA;
+
+  /* Borders */
+  --border-light: #E8ECF1;
+  --border-medium: #D1D9E2;
+
+  /* Shadows - PhantomBuster style */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* Border Radius - Friendly & Soft */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+}
 
 * {
   margin: 0;
@@ -11,11 +60,12 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  color: #4A4A4A;
-  background-color: #FAFAFA;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--gray-700);
+  background-color: var(--bg-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
 }
 
 @layer utilities {
@@ -24,30 +74,87 @@ body {
   }
 }
 
-/* Scrollbar personalizado estilo Apollo */
+/* Scrollbar personalizado - PhantomBuster style */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--gray-100);
+  border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--gray-400);
 }
 
-/* Animaciones sutiles */
+/* PhantomBuster Card Styles */
+.phantom-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.phantom-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
+}
+
+/* Lemlist Button Styles */
+.btn-primary {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(79, 124, 249, 0.2);
+}
+
+.btn-primary:hover {
+  background: var(--primary-blue-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(79, 124, 249, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--gray-700);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+}
+
+/* Animaciones sutiles - PhantomBuster style */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -55,16 +162,163 @@ body {
   }
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-/* Transiciones suaves para hover */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Card hover effect */
 .card-hover {
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Input styles - PhantomBuster */
+input[type="text"],
+input[type="email"],
+input[type="search"],
+textarea,
+select {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--gray-700);
+  background: white;
+  transition: all 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="search"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px var(--primary-blue-lighter);
+}
+
+/* Badge styles - Lemlist inspired */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.badge-blue {
+  background: var(--primary-blue-lighter);
+  color: var(--primary-blue-dark);
+}
+
+.badge-green {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.badge-yellow {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.badge-red {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.badge-gray {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+/* Timeline styles - Lemlist sequence style */
+.timeline-step {
+  position: relative;
+  padding-left: 32px;
+}
+
+.timeline-step::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 28px;
+  bottom: -16px;
+  width: 2px;
+  background: var(--border-light);
+}
+
+.timeline-step:last-child::before {
+  display: none;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-blue);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-dot.completed {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  border: 2px solid var(--gray-200);
+  border-top-color: var(--primary-blue);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 0.6s linear infinite;
 }

@@ -7,7 +7,8 @@ import { useCRM, type LeadStatus } from '@/contexts/CRMContext';
 import Link from 'next/link';
 import {
   MoreVertical, Mail, Linkedin, Phone, Calendar,
-  MessageSquare, Sparkles, Eye, Video, CheckCircle
+  MessageSquare, Sparkles, Eye, Video, CheckCircle,
+  X, Clock, FileText, Activity, User, Building2
 } from 'lucide-react';
 
 interface StageConfig {
@@ -57,8 +58,11 @@ const stages: StageConfig[] = [
 ];
 
 export default function CRMPage() {
-  const { leads, updateLeadStatus, meetings } = useCRM();
+  const { leads, updateLeadStatus, meetings, addNote } = useCRM();
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [newNote, setNewNote] = useState('');
 
   // Enrich leads with person data
   const enrichedLeads = useMemo(() => {
@@ -70,6 +74,11 @@ export default function CRMPage() {
       };
     });
   }, [leads]);
+
+  const selectedLead = useMemo(() => {
+    if (!selectedLeadId) return null;
+    return enrichedLeads.find(l => l.id === selectedLeadId);
+  }, [selectedLeadId, enrichedLeads]);
 
   const getLeadsByStage = (stage: LeadStatus) => {
     return enrichedLeads.filter(lead => lead.status === stage);
@@ -93,6 +102,37 @@ export default function CRMPage() {
     return meetings.find(m => m.leadId === leadId && m.status === 'scheduled');
   };
 
+  const handleOpenHistory = (leadId: string) => {
+    setSelectedLeadId(leadId);
+    setShowHistory(true);
+  };
+
+  const handleCloseHistory = () => {
+    setShowHistory(false);
+    setSelectedLeadId(null);
+    setNewNote('');
+  };
+
+  const handleAddNote = () => {
+    if (!selectedLead || !newNote.trim()) return;
+    addNote(selectedLead.id, newNote);
+    setNewNote('');
+  };
+
+  const getWarmupActionName = (type: string) => {
+    const names: Record<string, string> = {
+      'visitar-perfil': 'Visitó perfil',
+      'dar-like': 'Dio like',
+      'comentar': 'Comentó',
+      'seguir': 'Siguió',
+      'ver-posts': 'Vio posts',
+      'interactuar-seguidores': 'Interactuó con seguidores',
+      'revisar-empresa': 'Revisó empresa',
+      'guardar-posts': 'Guardó posts',
+    };
+    return names[type] || type;
+  };
+
   return (
     <AppLayout>
       <div className="h-full flex flex-col bg-[#fafafa]">
@@ -112,6 +152,13 @@ export default function CRMPage() {
               >
                 Ver listas
               </Link>
+              <Link
+                href="/conversaciones"
+                className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors"
+              >
+                <MessageSquare size={16} />
+                Inbox
+              </Link>
             </div>
           </div>
 
@@ -126,6 +173,12 @@ export default function CRMPage() {
                 {getLeadsByStage('en-secuencia').length}
               </div>
               <div className="text-xs text-gray-500">En Secuencia</div>
+            </div>
+            <div>
+              <div className="text-2xl font-semibold text-warning">
+                {getLeadsByStage('reunion-agendada').length}
+              </div>
+              <div className="text-xs text-gray-500">Reuniones</div>
             </div>
             <div>
               <div className="text-2xl font-semibold text-success">
@@ -191,7 +244,8 @@ export default function CRMPage() {
                           key={lead.id}
                           draggable
                           onDragStart={() => handleDragStart(lead.id)}
-                          className="bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-shadow group"
+                          onClick={() => handleOpenHistory(lead.id)}
+                          className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow group"
                         >
                           {/* Card Header */}
                           <div className="flex items-start justify-between mb-3">
@@ -208,7 +262,13 @@ export default function CRMPage() {
                                 <p className="text-xs text-gray-500">{lead.person.company}</p>
                               </div>
                             </div>
-                            <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // More actions menu
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded"
+                            >
                               <MoreVertical size={16} className="text-gray-400" />
                             </button>
                           </div>
@@ -221,9 +281,9 @@ export default function CRMPage() {
 
                             {lead.lastContact && (
                               <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <Calendar size={12} />
+                                <Clock size={12} />
                                 <span>
-                                  {new Date(lead.lastContact).toLocaleDateString('es-AR', {
+                                  Último contacto: {new Date(lead.lastContact).toLocaleDateString('es-AR', {
                                     day: 'numeric',
                                     month: 'short',
                                   })}
@@ -263,12 +323,13 @@ export default function CRMPage() {
                             </div>
                           </div>
 
-                          {/* Actions */}
+                          {/* Quick Actions */}
                           <div className="flex items-center gap-1 pt-2 border-t border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
                             <a
                               href={`https://${lead.person.linkedIn}`}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="p-1.5 hover:bg-blue-50 rounded text-gray-400 hover:text-blue-600 transition-colors"
                               title="LinkedIn"
                             >
@@ -276,6 +337,7 @@ export default function CRMPage() {
                             </a>
                             <a
                               href={`mailto:${lead.person.email}`}
+                              onClick={(e) => e.stopPropagation()}
                               className="p-1.5 hover:bg-purple-50 rounded text-gray-400 hover:text-purple-600 transition-colors"
                               title="Email"
                             >
@@ -284,12 +346,23 @@ export default function CRMPage() {
                             {lead.person.phone && (
                               <a
                                 href={`tel:${lead.person.phone}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className="p-1.5 hover:bg-green-50 rounded text-gray-400 hover:text-green-600 transition-colors"
                                 title="Teléfono"
                               >
                                 <Phone size={14} />
                               </a>
                             )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenHistory(lead.id);
+                              }}
+                              className="ml-auto p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-900 transition-colors text-xs font-medium"
+                              title="Ver historial"
+                            >
+                              <Activity size={14} />
+                            </button>
                           </div>
                         </div>
                       );
@@ -311,16 +384,252 @@ export default function CRMPage() {
         <div className="bg-white border-t border-gray-200 px-6 py-3">
           <div className="flex items-center justify-between text-xs">
             <span className="text-gray-500">
-              💡 Arrastra las tarjetas para moverlas entre etapas
+              💡 Haz clic en una card para ver el historial completo • Arrastra para mover entre etapas
             </span>
-            <Link
-              href="/conversaciones"
-              className="text-primary hover:text-primary-dark font-medium"
-            >
-              Ver conversaciones →
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/warm-up"
+                className="text-primary hover:text-primary-dark font-medium"
+              >
+                Warm-up social →
+              </Link>
+              <Link
+                href="/secuencias"
+                className="text-primary hover:text-primary-dark font-medium"
+              >
+                Secuencias →
+              </Link>
+            </div>
           </div>
         </div>
+
+        {/* Lead History Modal */}
+        {showHistory && selectedLead && selectedLead.person && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-gray-200 flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={selectedLead.person.avatar}
+                    alt={selectedLead.person.fullName}
+                    className="w-14 h-14 rounded-full"
+                  />
+                  <div>
+                    <h2 className="text-xl font-medium text-gray-900">
+                      {selectedLead.person.fullName}
+                    </h2>
+                    <p className="text-sm text-gray-600">{selectedLead.person.title}</p>
+                    <p className="text-sm text-gray-500">{selectedLead.person.company}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseHistory}
+                  className="p-2 hover:bg-gray-100 rounded transition-colors"
+                >
+                  <X size={20} className="text-gray-500" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="space-y-6">
+                  {/* Contact Info */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <User size={16} className="text-primary" />
+                      Información de Contacto
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Email:</span>
+                        <p className="text-gray-900">{selectedLead.person.email}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Teléfono:</span>
+                        <p className="text-gray-900">{selectedLead.person.phone}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">LinkedIn:</span>
+                        <a
+                          href={`https://${selectedLead.person.linkedIn}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary-dark"
+                        >
+                          Ver perfil
+                        </a>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">País:</span>
+                        <p className="text-gray-900">{selectedLead.person.country}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Warm-up Actions */}
+                  {selectedLead.warmupActions.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <Sparkles size={16} className="text-primary" />
+                        Warm-up Social ({selectedLead.warmupActions.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {selectedLead.warmupActions.map((action, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                          >
+                            <div className="w-2 h-2 bg-primary rounded-full mt-2" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">
+                                {getWarmupActionName(action.type)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(action.timestamp).toLocaleString('es-AR', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                              {action.notes && (
+                                <p className="text-xs text-gray-600 mt-1">{action.notes}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Meetings */}
+                  {meetings.filter(m => m.leadId === selectedLead.id).length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <Calendar size={16} className="text-primary" />
+                        Reuniones
+                      </h3>
+                      <div className="space-y-2">
+                        {meetings.filter(m => m.leadId === selectedLead.id).map(meeting => (
+                          <div
+                            key={meeting.id}
+                            className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {meeting.title}
+                                </p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {new Date(meeting.date).toLocaleDateString('es-AR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                  })}
+                                  {' • '}
+                                  {meeting.time}
+                                </p>
+                                {meeting.meetLink && (
+                                  <a
+                                    href={meeting.meetLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-primary hover:text-primary-dark mt-1 inline-block"
+                                  >
+                                    Link de reunión →
+                                  </a>
+                                )}
+                              </div>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                meeting.status === 'scheduled' ? 'bg-yellow-200 text-yellow-800' :
+                                meeting.status === 'completed' ? 'bg-green-200 text-green-800' :
+                                'bg-gray-200 text-gray-800'
+                              }`}>
+                                {meeting.status === 'scheduled' ? 'Programada' :
+                                 meeting.status === 'completed' ? 'Completada' :
+                                 'Cancelada'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <FileText size={16} className="text-primary" />
+                      Notas Internas ({selectedLead.notes.length})
+                    </h3>
+                    {selectedLead.notes.length > 0 ? (
+                      <div className="space-y-2 mb-3">
+                        {selectedLead.notes.map((note, index) => (
+                          <div
+                            key={index}
+                            className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700"
+                          >
+                            {note}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 mb-3">No hay notas aún</p>
+                    )}
+
+                    {/* Add Note */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+                        placeholder="Agregar una nota interna..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <button
+                        onClick={handleAddNote}
+                        disabled={!newNote.trim()}
+                        className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Agregar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Next Action */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Próxima Acción</h3>
+                    <p className="text-sm text-gray-700">{selectedLead.nextAction}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-500">
+                  Creado: {new Date(selectedLead.createdAt).toLocaleDateString('es-AR')}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/conversaciones"
+                    className="flex items-center gap-2 border border-gray-300 bg-white hover:bg-gray-50 px-4 py-2 rounded-lg text-sm text-gray-700 transition-colors"
+                  >
+                    <MessageSquare size={16} />
+                    Ver conversación
+                  </Link>
+                  <button
+                    onClick={handleCloseHistory}
+                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

@@ -3,6 +3,7 @@ import "./globals.css";
 import { ListsProvider } from "@/contexts/ListsContext";
 import { CRMProvider } from "@/contexts/CRMContext";
 import { SequencesProvider } from "@/contexts/SequencesContext";
+import { ConversationsProvider } from "@/contexts/ConversationsContext";
 
 export const metadata: Metadata = {
   title: "End2End - Generación de Leads B2B",
@@ -19,7 +20,9 @@ export default function RootLayout({
       <body>
         <CRMProvider>
           <ListsProvider>
-            <SequencesProvider>{children}</SequencesProvider>
+            <SequencesProvider>
+              <ConversationsProvider>{children}</ConversationsProvider>
+            </SequencesProvider>
           </ListsProvider>
         </CRMProvider>
       </body>

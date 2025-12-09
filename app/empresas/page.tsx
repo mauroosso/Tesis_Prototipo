@@ -145,13 +145,13 @@ export default function EmpresasPage() {
           {/* AI Search Bar */}
           <div className="mb-4">
             <div className="relative">
-              <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500" size={20} />
+              <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 placeholder="Usa IA para encontrar empresas perfectas. Ejemplo: Busca empresas tech en Argentina con más de 50 empleados..."
                 value={aiSearch}
                 onChange={(e) => setAiSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-gradient-to-r from-purple-50 to-blue-50"
+                className="w-full pl-14 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-gray-50"
               />
             </div>
           </div>
